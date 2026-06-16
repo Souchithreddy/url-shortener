@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 import os
@@ -23,10 +23,13 @@ app = FastAPI(
 
 app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 
+@app.get("/")
+def root():
+    return FileResponse("static/index.html")
 
 @app.post("/shorten", response_model=schemas.URLResponse, status_code=201)
 def shorten_url(payload: URLCreate, db: Session = Depends(get_db)):
-    long_url = str(payload.long_url)  # convert Pydantic HttpUrl to plain string
+    long_url = str(payload.long_url)
     db_url = crud.create_short_url(db=db, long_url=long_url)
     return schemas.URLResponse(
         short_code=db_url.short_code,
@@ -35,11 +38,9 @@ def shorten_url(payload: URLCreate, db: Session = Depends(get_db)):
         created_at=db_url.created_at
     )
 
-
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
-
 
 @app.get("/{short_code}")
 def redirect_to_url(short_code: str, db: Session = Depends(get_db)):
